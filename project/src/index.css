@@ -1,0 +1,74 @@
+:root {
+  --primary: #2D3748;
+  --primary-light: #4A5568;
+  --accent: #0D9488;
+  --accent-light: #14B8A6;
+  --background: #F8FAFC;
+  --error: #E53E3E;
+  --success: #10B981;
+  --warning: #F59E0B;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-background text-gray-800 min-h-screen;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium text-gray-900;
+  }
+
+  p {
+    @apply leading-relaxed;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md transition-colors duration-200 font-medium;
+  }
+
+  .btn-primary {
+    @apply bg-teal-600 text-white hover:bg-teal-700;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 text-white hover:bg-red-600;
+  }
+
+  .input {
+    @apply px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent;
+  }
+}
+
+.ProseMirror {
+  @apply p-4 min-h-[300px] outline-none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  @apply text-gray-400 float-left h-0 pointer-events-none;
+  content: attr(data-placeholder);
+}
+
+.collaboration-cursor__caret {
+  @apply relative border-l-2 border-solid h-[1.2em] ml-[0.1em] mb-[0.1em];
+  word-break: normal;
+}
+
+.collaboration-cursor__label {
+  @apply absolute left-[-1px] text-xs font-medium text-white rounded-sm py-[2px] px-[6px] whitespace-nowrap bottom-full;
+  user-select: none;
+  transform: translateY(-8px);
+}
