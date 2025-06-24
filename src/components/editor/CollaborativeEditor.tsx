@@ -12,6 +12,12 @@ import EditorMenuBar from './EditorMenuBar';
 import UserPresenceList from './UserPresenceList';
 import { Button } from '../ui/Button';
 import { updateDocumentContent, getDocument } from '../../services/documentService';
+import BulletList from '@tiptap/extension-bullet-list';
+import OrderedList from '@tiptap/extension-ordered-list';
+import ListItem from '@tiptap/extension-list-item';
+import CodeBlock from '@tiptap/extension-code-block';
+import Blockquote from '@tiptap/extension-blockquote';
+
 
 type SaveStatus = 'saved' | 'saving' | 'error' | 'pending';
 
@@ -73,7 +79,18 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   // Editor initialization
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        // Disable features that are being overridden below
+        bulletList: false,
+        orderedList: false,
+        codeBlock: false,
+        blockquote: false,
+      }),
+      BulletList,
+      OrderedList,
+      ListItem,
+      CodeBlock,
+      Blockquote,
       Placeholder.configure({ placeholder: 'Start writing...' }),
     ],
     content: lastSavedContent,
@@ -182,7 +199,10 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       
       <div className="flex-grow overflow-auto">
         <div className="max-w-4xl mx-auto px-4">
-          <EditorContent editor={editor} className="min-h-[calc(100vh-12rem)] border-b pb-24" />
+          <EditorContent
+            editor={editor}
+            className="min-h-[calc(100vh-12rem)] border-b pb-24 prose"
+          />         
         </div>
       </div>
       
