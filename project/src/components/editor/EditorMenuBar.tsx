@@ -23,6 +23,9 @@ const EditorMenuBar: React.FC<EditorMenuBarProps> = ({ editor }) => {
     return null;
   }
 
+  const canUndo = typeof editor.can().undo === 'function';
+  const canRedo = typeof editor.can().redo === 'function';
+
   return (
     <div className="border-b border-gray-200 p-2 sticky top-0 bg-white z-10">
       <div className="flex flex-wrap items-center gap-1">
@@ -104,23 +107,27 @@ const EditorMenuBar: React.FC<EditorMenuBarProps> = ({ editor }) => {
         
         <div className="h-6 w-px bg-gray-300 mx-1"></div>
         
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
-        >
-          <Undo size={16} />
-        </Button>
+        {canUndo && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().undo()}
+          >
+            <Undo size={16} />
+          </Button>
+        )}
         
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
-        >
-          <Redo size={16} />
-        </Button>
+        {canRedo && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().redo()}
+          >
+            <Redo size={16} />
+          </Button>
+        )}
       </div>
     </div>
   );
