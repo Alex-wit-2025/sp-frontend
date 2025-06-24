@@ -27,28 +27,16 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastContentRef = useRef<string>('');
-  
-  // Generate a consistent color for the current user
-  const userColor = `#${Math.floor((parseInt(user.uid.substring(0, 8), 16) % 0xFFFFFF)).toString(16).padStart(6, '0')}`;
-  
+
   // Load initial document content
   useEffect(() => {
     const loadDocument = async () => {
       try {
         console.log('Loading document with ID:', documentId);
         const doc = await getDocument(documentId);
-        console.log('Loaded document data:', doc);
-        
-        setDocumentData(doc); // Store for debugging
-        
-        if (doc && doc.content) {
-          console.log('Document content found:', doc.content);
-          setInitialContent(doc.content);
+        if (doc?.content) {
           setLastSavedContent(doc.content);
           lastContentRef.current = doc.content;
-        } else {
-          console.log('No content found in document');
-          setInitialContent('');
         }
       } catch (error) {
         console.error('Error loading document:', error);
@@ -57,30 +45,21 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       }
     };
 
-    if (documentId) {
-      loadDocument();
-    }
+    loadDocument();
   }, [documentId]);
-  
+
   // Debounced save function
   const debouncedSave = useCallback(async (content: string) => {
-    // Don't save if content hasn't changed
-    if (content === lastSavedContent) {
-      console.log('Content unchanged, skipping save');
-      return;
-    }
+    if (content === lastSavedContent) return;
     
     try {
-      console.log('Saving content:', content);
       setSaveStatus('saving');
       await updateDocumentContent(documentId, content);
       setLastSavedContent(content);
       setSaveStatus('saved');
-      console.log('Content saved successfully');
     } catch (error) {
       console.error('Error saving document:', error);
       setSaveStatus('error');
-      // Reset to pending after 3 seconds to allow retry
       setTimeout(() => {
         if (lastContentRef.current !== lastSavedContent) {
           setSaveStatus('pending');
@@ -89,21 +68,15 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     }
   }, [documentId, lastSavedContent]);
 
-  // Manual save function
-  const handleManualSave = useCallback(async () => {
-    const currentContent = lastContentRef.current;
-    if (currentContent && currentContent !== lastSavedContent) {
-      await debouncedSave(currentContent);
-    }
-  }, [debouncedSave, lastSavedContent]);
+  
 
-  // Create editor without collaboration extensions first
+  // Editor initialization
   const editor = useEditor({
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder: 'Start writing...' }),
     ],
-    content: initialContent, // Set initial content here
+    content: lastSavedContent,
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg mx-auto focus:outline-none',
@@ -112,41 +85,33 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       lastContentRef.current = content;
-      console.log('Editor content updated:', content);
       
-      // Set status to pending if content changed
       if (content !== lastSavedContent) {
         setSaveStatus('pending');
       }
       
-      // Clear existing timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
       
-      // Set new timeout for auto-save (debounced by 2 seconds)
       saveTimeoutRef.current = setTimeout(() => {
         debouncedSave(content);
       }, 2000);
     },
-  }, [initialContent, debouncedSave, lastSavedContent]);
-
-  // Update editor content when initialContent changes
-  // Add this state at the top of your component
-  const [hasInitialized, setHasInitialized] = useState(false);
-
-  // Replace your effect with this:
+  }, [lastSavedContent, debouncedSave]);
+    // Manual save function
+      const handleManualSave = useCallback(async () => {
+        if (editor) {
+          const content = editor.getHTML();
+          await debouncedSave(content);
+        }
+      }, [debouncedSave, editor]);
+  // Update editor when content loads
   useEffect(() => {
-    if (editor && initialContent && !isLoading && !hasInitialized) {
-      editor.commands.setContent(initialContent);
-      setHasInitialized(true);
+    if (editor && lastSavedContent && !isLoading) {
+      editor.commands.setContent(lastSavedContent);
     }
-  }, [editor, initialContent, isLoading, hasInitialized]);
-
-  // Reset the flag when the documentId changes:
-  useEffect(() => {
-    setHasInitialized(false);
-  }, [documentId]);
+  }, [editor, lastSavedContent, isLoading]);
 
   // Save status indicator
   const SaveStatusIndicator = () => {
@@ -196,15 +161,6 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   
   return (
     <div className="h-full flex flex-col">
-      {/* Debug info - remove this in production */}
-      <div className="bg-yellow-100 p-2 text-xs">
-        <strong>Debug Info:</strong><br />
-        Document ID: {documentId}<br />
-        Initial Content: {initialContent || 'EMPTY'}<br />
-        Document Data: {JSON.stringify(documentData)}<br />
-        Current Editor Content: {editor.getHTML() || 'EMPTY'}
-      </div>
-      
       <EditorMenuBar editor={editor} />
       
       {/* Save status bar */}
@@ -216,7 +172,6 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
               variant="ghost"
               size="sm"
               onClick={handleManualSave}
-              disabled={false}
               leftIcon={<Save size={16} />}
             >
               Save Now
