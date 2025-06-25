@@ -17,7 +17,8 @@ import OrderedList from '@tiptap/extension-ordered-list';
 import ListItem from '@tiptap/extension-list-item';
 import CodeBlock from '@tiptap/extension-code-block';
 import Blockquote from '@tiptap/extension-blockquote';
-
+import Mathematics from '@tiptap/extension-mathematics';
+import 'katex/dist/katex.min.css';
 
 type SaveStatus = 'saved' | 'saving' | 'error' | 'pending';
 
@@ -88,9 +89,14 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       }),
       BulletList,
       OrderedList,
-      ListItem,
       CodeBlock,
       Blockquote,
+      Mathematics.configure({
+        shouldRender: (state, pos, node) => {
+          const $pos = state.doc.resolve(pos)
+          return node.type.name === 'text' && $pos.parent.type.name !== 'codeBlock'
+        },
+      }),
       Placeholder.configure({ placeholder: 'Start writing...' }),
     ],
     content: lastSavedContent,
@@ -99,6 +105,8 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         class: 'prose prose-sm sm:prose lg:prose-lg mx-auto focus:outline-none',
       },
     },
+
+
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       lastContentRef.current = content;
@@ -116,6 +124,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       }, 2000);
     },
   }, [lastSavedContent, debouncedSave]);
+
     // Manual save function
       const handleManualSave = useCallback(async () => {
         if (editor) {

@@ -10,7 +10,8 @@ import {
   Heading2, 
   Quote, 
   Undo, 
-  Redo 
+  Redo,
+  SquareRadical, 
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 
@@ -103,6 +104,26 @@ const EditorMenuBar: React.FC<EditorMenuBarProps> = ({ editor }) => {
           className={editor.isActive('blockquote') ? 'bg-gray-200' : ''}
         >
           <Quote size={16} />
+        </Button>
+
+
+        {/* Math block functionality not implemented: button disabled */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            editor
+              .chain()
+              .focus()
+              .insertContent({
+                type: 'mathBlock',
+                attrs: {},
+                content: [{ type: 'text', text: '' }],
+              })
+              .run()
+          }
+        >
+          <SquareRadical size={16} />
         </Button>
         
         <div className="h-6 w-px bg-gray-300 mx-1"></div>
