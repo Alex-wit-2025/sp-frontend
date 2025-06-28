@@ -28,13 +28,14 @@ export async function createDocument(userId: string, title: string = 'Untitled D
   return docRef.id;
 }
 
-export async function getDocument(id: string): Promise<DocumentData | null> {
-  const docRef = doc(db, COLLECTION_NAME, id);
-  const docSnap = await getDoc(docRef);
-  
-  if (docSnap.exists()) {
-    return { id: docSnap.id, ...docSnap.data() } as DocumentData;
-  } else {
+export async function getDocument(id: string, uid: string): Promise<DocumentData | null> {
+  // GET request to /api/documents/:id/:uid
+  try {
+    const res = await fetch(`/api/documents/${id}/${uid}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data as DocumentData;
+  } catch (e) {
     return null;
   }
 }

@@ -33,7 +33,7 @@ const DocumentEditor: React.FC = () => {
         setLoading(true);
         
         // Fetch current document
-        const doc = await getDocument(id);
+        const doc = await getDocument(id, user.uid);
         if (!doc) {
           setError('Document not found');
           return;
