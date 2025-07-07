@@ -36,7 +36,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     const loadDocument = async () => {
       try {
         console.log('Loading document with ID:', documentId);
-        const doc = await getDocument(documentId);
+        const doc = await getDocument(documentId, user.uid, await user.getIdToken());
         console.log('Loaded document data:', doc);
         
         setDocumentData(doc); // Store for debugging

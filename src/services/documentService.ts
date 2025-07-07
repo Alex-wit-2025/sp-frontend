@@ -28,14 +28,20 @@ export async function createDocument(userId: string, title: string = 'Untitled D
   return docRef.id;
 }
 
-export async function getDocument(id: string, uid: string): Promise<DocumentData | null> {
+export async function getDocument(id: string, uid: string, token: string): Promise<DocumentData | null> {
   // GET request to /api/documents/:id/:uid
+  console.log('Fetching document:', id, uid);
   try {
-    const res = await fetch(`/api/documents/${id}/${uid}`);
+    const res = await fetch(`/api/documents/${id}/${uid}`, {
+      headers: token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined,
+    });
     if (!res.ok) return null;
     const data = await res.json();
     return data as DocumentData;
   } catch (e) {
+    console.log('Error fetching document:', e);
     return null;
   }
 }
