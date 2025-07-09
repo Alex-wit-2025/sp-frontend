@@ -67,12 +67,40 @@ export async function updateDocumentTitle(id: string, title: string): Promise<vo
   });
 }
 
-export async function updateDocumentContent(id: string, content: string): Promise<void> {
-  const docRef = doc(db, COLLECTION_NAME, id);
-  await updateDoc(docRef, { 
-    content, 
-    updatedAt: serverTimestamp() 
-  });
+// TODO: implement some way to manage who has the "talking stick"
+// the user that holds the "stick" will be the only user who submits saves to the backend
+// there will also need to be some kind of conflict resolution on the backend based off of who holds the "stick"
+// this might be doable with yjs but im just not sure
+export async function updateDocumentContent(id: string, uid: string, content: string, token: string): Promise<Boolean> {
+  console.log("Updating document content", id, uid, content);
+  console.log("Token:", token);
+  const postReq = {
+    content: content
+  }
+  try{
+    const res = await fetch(`/api/documents/update/${id}/${uid}`,{
+      headers: token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined,
+      body: JSON.stringify(postReq),
+      method: 'POST'
+    })
+
+    console.log("got response", res)
+
+    if (!res.ok) return false;
+    const data = await res.json();
+    console.log("Response data:", data);
+    if (res.status !== 200) {
+      console.error('Error updating document:', data);
+      return false;
+    }
+    return true
+
+  }catch(e){
+    console.log('Error posting data');
+    return false;
+  }
 }
 
 export async function deleteDocument(id: string): Promise<void> {

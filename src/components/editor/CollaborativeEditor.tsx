@@ -73,12 +73,16 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     try {
       console.log('Saving content:', content);
       setSaveStatus('saving');
-      await updateDocumentContent(documentId, content);
+      let resp = await updateDocumentContent(documentId, user.uid, content, await user.getIdToken());
+      console.log('Save response:', resp);
+      console.log('Document saved successfully:', content);
       setLastSavedContent(content);
       setSaveStatus('saved');
       console.log('Content saved successfully');
+      
     } catch (error) {
       console.error('Error saving document:', error);
+      console.log('Content:', content);
       setSaveStatus('error');
       // Reset to pending after 3 seconds to allow retry
       setTimeout(() => {
@@ -92,6 +96,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   // Manual save function
   const handleManualSave = useCallback(async () => {
     const currentContent = lastContentRef.current;
+    console.log('Manual save triggered with content:', currentContent);
     if (currentContent && currentContent !== lastSavedContent) {
       await debouncedSave(currentContent);
     }
@@ -126,6 +131,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       
       // Set new timeout for auto-save (debounced by 2 seconds)
       saveTimeoutRef.current = setTimeout(() => {
+        console.log('Auto-saving content:', content);
         debouncedSave(content);
       }, 2000);
     },
@@ -137,11 +143,12 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
 
   // Replace your effect with this:
   useEffect(() => {
-    if (editor && initialContent && !isLoading && !hasInitialized) {
-      editor.commands.setContent(initialContent);
-      setHasInitialized(true);
-    }
-  }, [editor, initialContent, isLoading, hasInitialized]);
+  if (editor && lastSavedContent && !isLoading) {
+    editor.commands.setContent(lastSavedContent);
+  }
+  // Only depend on editor, documentId, and isLoading
+  }, [editor, documentId, isLoading]);
+
 
   // Reset the flag when the documentId changes:
   useEffect(() => {
