@@ -18,6 +18,9 @@ import ListItem from '@tiptap/extension-list-item';
 import CodeBlock from '@tiptap/extension-code-block';
 import Blockquote from '@tiptap/extension-blockquote';
 import Mathematics from '@tiptap/extension-mathematics';
+import Strike from '@tiptap/extension-strike'
+import Underline from '@tiptap/extension-underline'
+import { TextAlign } from '@tiptap/extension-text-align'
 import 'katex/dist/katex.min.css';
 
 type SaveStatus = 'saved' | 'saving' | 'error' | 'pending';
@@ -80,17 +83,16 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   // Editor initialization
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        // Disable features that are being overridden below
-        bulletList: false,
-        orderedList: false,
-        codeBlock: false,
-        blockquote: false,
-      }),
+      StarterKit,
       BulletList,
       OrderedList,
       CodeBlock,
       Blockquote,
+      Strike,
+      Underline,
+      TextAlign.configure({
+      types: ['heading', 'paragraph'], // Add all node types you want to align
+      }),
       Mathematics.configure({
         shouldRender: (state, pos, node) => {
           const $pos = state.doc.resolve(pos)
@@ -121,7 +123,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       
       saveTimeoutRef.current = setTimeout(() => {
         debouncedSave(content);
-      }, 2000);
+      }, 10000);
     },
   }, [lastSavedContent, debouncedSave]);
 
