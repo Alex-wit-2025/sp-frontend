@@ -12,6 +12,16 @@ import EditorMenuBar from './EditorMenuBar';
 import UserPresenceList from './UserPresenceList';
 import { Button } from '../ui/Button';
 import { updateDocumentContent, getDocument } from '../../services/documentService';
+import BulletList from '@tiptap/extension-bullet-list';
+import OrderedList from '@tiptap/extension-ordered-list';
+import ListItem from '@tiptap/extension-list-item';
+import CodeBlock from '@tiptap/extension-code-block';
+import Blockquote from '@tiptap/extension-blockquote';
+import Mathematics from '@tiptap/extension-mathematics';
+import Strike from '@tiptap/extension-strike'
+import Underline from '@tiptap/extension-underline'
+import { TextAlign } from '@tiptap/extension-text-align'
+import 'katex/dist/katex.min.css';
 
 type SaveStatus = 'saved' | 'saving' | 'error' | 'pending';
 
@@ -27,10 +37,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastContentRef = useRef<string>('');
-  
-  // Generate a consistent color for the current user
-  const userColor = `#${Math.floor((parseInt(user.uid.substring(0, 8), 16) % 0xFFFFFF)).toString(16).padStart(6, '0')}`;
-  
+
   // Load initial document content
   useEffect(() => {
     const loadDocument = async () => {
@@ -46,9 +53,6 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
           setInitialContent(doc.content);
           setLastSavedContent(doc.content);
           lastContentRef.current = doc.content;
-        } else {
-          console.log('No content found in document');
-          setInitialContent('');
         }
       } catch (error) {
         console.error('Error loading document:', error);
@@ -57,34 +61,24 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       }
     };
 
-    if (documentId) {
-      loadDocument();
-    }
+    loadDocument();
   }, [documentId]);
-  
+
   // Debounced save function
   const debouncedSave = useCallback(async (content: string) => {
-    // Don't save if content hasn't changed
-    if (content === lastSavedContent) {
-      console.log('Content unchanged, skipping save');
-      return;
-    }
+    if (content === lastSavedContent) return;
     
     try {
-      console.log('Saving content:', content);
       setSaveStatus('saving');
       let resp = await updateDocumentContent(documentId, user.uid, content, await user.getIdToken());
       console.log('Save response:', resp);
       console.log('Document saved successfully:', content);
       setLastSavedContent(content);
       setSaveStatus('saved');
-      console.log('Content saved successfully');
-      
     } catch (error) {
       console.error('Error saving document:', error);
       console.log('Content:', content);
       setSaveStatus('error');
-      // Reset to pending after 3 seconds to allow retry
       setTimeout(() => {
         if (lastContentRef.current !== lastSavedContent) {
           setSaveStatus('pending');
@@ -102,46 +96,62 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     }
   }, [debouncedSave, lastSavedContent]);
 
-  // Create editor without collaboration extensions first
+  // Editor initialization
   const editor = useEditor({
     extensions: [
       StarterKit,
+      BulletList,
+      OrderedList,
+      CodeBlock,
+      Blockquote,
+      Strike,
+      Underline,
+      TextAlign.configure({
+      types: ['heading', 'paragraph'], // Add all node types you want to align
+      }),
+      Mathematics.configure({
+        shouldRender: (state, pos, node) => {
+          const $pos = state.doc.resolve(pos)
+          return node.type.name === 'text' && $pos.parent.type.name !== 'codeBlock'
+        },
+      }),
       Placeholder.configure({ placeholder: 'Start writing...' }),
     ],
-    content: initialContent, // Set initial content here
+    content: lastSavedContent,
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg mx-auto focus:outline-none',
       },
     },
+
+
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       lastContentRef.current = content;
-      console.log('Editor content updated:', content);
       
-      // Set status to pending if content changed
       if (content !== lastSavedContent) {
         setSaveStatus('pending');
       }
       
-      // Clear existing timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
       
-      // Set new timeout for auto-save (debounced by 2 seconds)
       saveTimeoutRef.current = setTimeout(() => {
         console.log('Auto-saving content:', content);
         debouncedSave(content);
-      }, 2000);
+      }, 10000);
     },
-  }, [initialContent, debouncedSave, lastSavedContent]);
+  }, [lastSavedContent, debouncedSave]);
 
-  // Update editor content when initialContent changes
-  // Add this state at the top of your component
-  const [hasInitialized, setHasInitialized] = useState(false);
-
-  // Replace your effect with this:
+    // Manual save function
+      const handleManualSave = useCallback(async () => {
+        if (editor) {
+          const content = editor.getHTML();
+          await debouncedSave(content);
+        }
+      }, [debouncedSave, editor]);
+  // Update editor when content loads
   useEffect(() => {
   if (editor && lastSavedContent && !isLoading) {
     editor.commands.setContent(lastSavedContent);
@@ -154,6 +164,10 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   useEffect(() => {
     setHasInitialized(false);
   }, [documentId]);
+    if (editor && lastSavedContent && !isLoading) {
+      editor.commands.setContent(lastSavedContent);
+    }
+  }, [editor, lastSavedContent, isLoading]);
 
   // Save status indicator
   const SaveStatusIndicator = () => {
@@ -203,15 +217,6 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   
   return (
     <div className="h-full flex flex-col">
-      {/* Debug info - remove this in production */}
-      <div className="bg-yellow-100 p-2 text-xs">
-        <strong>Debug Info:</strong><br />
-        Document ID: {documentId}<br />
-        Initial Content: {initialContent || 'EMPTY'}<br />
-        Document Data: {JSON.stringify(documentData)}<br />
-        Current Editor Content: {editor.getHTML() || 'EMPTY'}
-      </div>
-      
       <EditorMenuBar editor={editor} />
       
       {/* Save status bar */}
@@ -223,7 +228,6 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
               variant="ghost"
               size="sm"
               onClick={handleManualSave}
-              disabled={false}
               leftIcon={<Save size={16} />}
             >
               Save Now
@@ -234,7 +238,10 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       
       <div className="flex-grow overflow-auto">
         <div className="max-w-4xl mx-auto px-4">
-          <EditorContent editor={editor} className="min-h-[calc(100vh-12rem)] border-b pb-24" />
+          <EditorContent
+            editor={editor}
+            className="min-h-[calc(100vh-12rem)] border-b pb-24 prose"
+          />         
         </div>
       </div>
       
