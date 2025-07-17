@@ -43,8 +43,14 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     const loadDocument = async () => {
       try {
         console.log('Loading document with ID:', documentId);
-        const doc = await getDocument(documentId);
-        if (doc?.content) {
+        const doc = await getDocument(documentId, user.uid, await user.getIdToken());
+        console.log('Loaded document data:', doc);
+        
+        setDocumentData(doc); // Store for debugging
+        
+        if (doc && doc.content) {
+          console.log('Document content found:', doc.content);
+          setInitialContent(doc.content);
           setLastSavedContent(doc.content);
           lastContentRef.current = doc.content;
         }
@@ -64,11 +70,14 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     
     try {
       setSaveStatus('saving');
-      await updateDocumentContent(documentId, content);
+      let resp = await updateDocumentContent(documentId, user.uid, content, await user.getIdToken());
+      console.log('Save response:', resp);
+      console.log('Document saved successfully:', content);
       setLastSavedContent(content);
       setSaveStatus('saved');
     } catch (error) {
       console.error('Error saving document:', error);
+      console.log('Content:', content);
       setSaveStatus('error');
       setTimeout(() => {
         if (lastContentRef.current !== lastSavedContent) {
@@ -78,7 +87,14 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     }
   }, [documentId, lastSavedContent]);
 
-  
+  // Manual save function
+  const handleManualSave = useCallback(async () => {
+    const currentContent = lastContentRef.current;
+    console.log('Manual save triggered with content:', currentContent);
+    if (currentContent && currentContent !== lastSavedContent) {
+      await debouncedSave(currentContent);
+    }
+  }, [debouncedSave, lastSavedContent]);
 
   // Editor initialization
   const editor = useEditor({
@@ -122,6 +138,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       }
       
       saveTimeoutRef.current = setTimeout(() => {
+        console.log('Auto-saving content:', content);
         debouncedSave(content);
       }, 10000);
     },
@@ -136,6 +153,17 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       }, [debouncedSave, editor]);
   // Update editor when content loads
   useEffect(() => {
+  if (editor && lastSavedContent && !isLoading) {
+    editor.commands.setContent(lastSavedContent);
+  }
+  // Only depend on editor, documentId, and isLoading
+  }, [editor, documentId, isLoading]);
+
+
+  // Reset the flag when the documentId changes:
+  useEffect(() => {
+    setHasInitialized(false);
+  }, [documentId]);
     if (editor && lastSavedContent && !isLoading) {
       editor.commands.setContent(lastSavedContent);
     }
