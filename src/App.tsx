@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import DocumentEditor from './pages/DocumentEditor';
 import NotFound from './pages/NotFound';
+import Landing from './pages/LandingPage';
 
 // Components
 import { Loader } from './components/ui/Loader';
@@ -25,7 +26,11 @@ function App() {
     <Routes>
       <Route 
         path="/" 
-        element={user ? <Navigate to="/dashboard" /> : <Login />} 
+        element={user ? <Navigate to="/login" /> : <Landing/>} 
+      />
+      <Route 
+        path="/login"
+        element={user ? <Navigate to="/dashboard" /> : <Login />}
       />
       <Route 
         path="/dashboard" 
