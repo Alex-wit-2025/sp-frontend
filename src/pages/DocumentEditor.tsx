@@ -39,6 +39,7 @@ const DocumentEditor: React.FC = () => {
           setError('Document not found');
           return;
         }
+        console.log('Fetched document in document editor:', doc);
         setDocument(doc);
         
         // Fetch user's documents for sidebar

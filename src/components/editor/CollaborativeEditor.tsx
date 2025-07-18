@@ -33,7 +33,8 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [initialContent, setInitialContent] = useState<string>('');
   const [documentData, setDocumentData] = useState<any>(null); // For debugging
-  
+  const [hasInitialized, setHasInitialized] = useState(false);
+
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastContentRef = useRef<string>('');
@@ -45,9 +46,9 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         console.log('Loading document with ID:', documentId);
         const doc = await getDocument(documentId, user.uid, await user.getIdToken());
         console.log('Loaded document data:', doc);
-        
+
         setDocumentData(doc); // Store for debugging
-        
+
         if (doc && doc.content) {
           console.log('Document content found:', doc.content);
           setInitialContent(doc.content);
@@ -67,7 +68,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   // Debounced save function
   const debouncedSave = useCallback(async (content: string) => {
     if (content === lastSavedContent) return;
-    
+
     try {
       setSaveStatus('saving');
       let resp = await updateDocumentContent(documentId, user.uid, content, await user.getIdToken());
@@ -107,7 +108,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       Strike,
       Underline,
       TextAlign.configure({
-      types: ['heading', 'paragraph'], // Add all node types you want to align
+        types: ['heading', 'paragraph'], // Add all node types you want to align
       }),
       Mathematics.configure({
         shouldRender: (state, pos, node) => {
@@ -128,15 +129,15 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       lastContentRef.current = content;
-      
+
       if (content !== lastSavedContent) {
         setSaveStatus('pending');
       }
-      
+
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      
+
       saveTimeoutRef.current = setTimeout(() => {
         console.log('Auto-saving content:', content);
         debouncedSave(content);
@@ -144,26 +145,8 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     },
   }, [lastSavedContent, debouncedSave]);
 
-    // Manual save function
-      const handleManualSave = useCallback(async () => {
-        if (editor) {
-          const content = editor.getHTML();
-          await debouncedSave(content);
-        }
-      }, [debouncedSave, editor]);
   // Update editor when content loads
   useEffect(() => {
-  if (editor && lastSavedContent && !isLoading) {
-    editor.commands.setContent(lastSavedContent);
-  }
-  // Only depend on editor, documentId, and isLoading
-  }, [editor, documentId, isLoading]);
-
-
-  // Reset the flag when the documentId changes:
-  useEffect(() => {
-    setHasInitialized(false);
-  }, [documentId]);
     if (editor && lastSavedContent && !isLoading) {
       editor.commands.setContent(lastSavedContent);
     }
@@ -214,11 +197,11 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   if (!editor) {
     return <div className="flex justify-center p-12">Loading editor...</div>;
   }
-  
+
   return (
     <div className="h-full flex flex-col">
       <EditorMenuBar editor={editor} />
-      
+
       {/* Save status bar */}
       <div className="border-b border-gray-200 px-4 py-2 bg-gray-50 flex justify-between items-center">
         <SaveStatusIndicator />
@@ -235,17 +218,17 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
           )}
         </div>
       </div>
-      
+
       <div className="flex-grow overflow-auto">
         <div className="max-w-4xl mx-auto px-4">
           <EditorContent
             editor={editor}
             className="min-h-[calc(100vh-12rem)] border-b pb-24 prose"
-          />         
+          />
         </div>
       </div>
-      
-      
+
+
       <UserPresenceList users={connectedUsers} />
     </div>
   );

@@ -39,6 +39,7 @@ export async function getDocument(id: string, uid: string, token: string): Promi
     });
     if (!res.ok) return null;
     const data = await res.json();
+    console.log('Document data:', data);
     return data as DocumentData;
   } catch (e) {
     console.log('Error fetching document:', e);
