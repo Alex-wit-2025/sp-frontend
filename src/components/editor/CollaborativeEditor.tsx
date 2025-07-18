@@ -23,21 +23,26 @@ import Underline from '@tiptap/extension-underline'
 import { TextAlign } from '@tiptap/extension-text-align'
 import 'katex/dist/katex.min.css';
 
+
 type SaveStatus = 'saved' | 'saving' | 'error' | 'pending';
 
 const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+  const [wsStatus, setWsStatus] = useState<string>('disconnected');
   const [connectedUsers, setConnectedUsers] = useState<UserPresence[]>([]);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [lastSavedContent, setLastSavedContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [initialContent, setInitialContent] = useState<string>('');
-  const [documentData, setDocumentData] = useState<any>(null); // For debugging
+  const [documentData, setDocumentData] = useState<any>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastContentRef = useRef<string>('');
+
+  // --- Yjs Doc Ref ---
+  const ydocRef = useRef<Y.Doc | null>(null);
 
   // Load initial document content
   useEffect(() => {
@@ -47,7 +52,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         const doc = await getDocument(documentId, user.uid, await user.getIdToken());
         console.log('Loaded document data:', doc);
 
-        setDocumentData(doc); // Store for debugging
+        setDocumentData(doc);
 
         if (doc && doc.content) {
           console.log('Document content found:', doc.content);
@@ -63,6 +68,38 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     };
 
     loadDocument();
+  }, [documentId]);
+
+  // --- Yjs Websocket Connection ---
+  useEffect(() => {
+    if (!ydocRef.current) {
+      ydocRef.current = new Y.Doc();
+    }
+    const ydoc = ydocRef.current;
+
+    // Connect to yjs-ws server
+    const wsProvider = new WebsocketProvider(
+      'ws://localhost:1234',
+      documentId,
+      ydoc
+    );
+
+    setProvider(wsProvider);
+
+    // Log connection status
+    wsProvider.on('status', event => {
+      setWsStatus(event.status);
+      console.log('Yjs WS status:', event.status);
+      console.log('Current user displayName:', user.displayName || 'Anonymous');
+    });
+
+    wsProvider.on('sync', isSynced => {
+      console.log('Yjs WS sync:', isSynced);
+    });
+
+    return () => {
+      wsProvider.destroy();
+    };
   }, [documentId]);
 
   // Debounced save function
@@ -117,6 +154,21 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         },
       }),
       Placeholder.configure({ placeholder: 'Start writing...' }),
+      // --- Add Collaboration extensions ---
+      ...(provider
+        ? [
+            Collaboration.configure({
+              document: ydocRef.current!,
+            }),
+            CollaborationCursor.configure({
+              provider: provider,
+              user: {
+                name: user.displayName || 'Anonymous',
+                color: '#ffa500',
+              },
+            }),
+          ]
+        : []),
     ],
     content: lastSavedContent,
     editorProps: {
@@ -124,7 +176,6 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         class: 'prose prose-sm sm:prose lg:prose-lg mx-auto focus:outline-none',
       },
     },
-
 
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
@@ -143,7 +194,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         debouncedSave(content);
       }, 10000);
     },
-  }, [lastSavedContent, debouncedSave]);
+  }, [lastSavedContent, debouncedSave, provider]);
 
   // Update editor when content loads
   useEffect(() => {
@@ -217,6 +268,12 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
             </Button>
           )}
         </div>
+        {/* --- Show only WS status --- */}
+        <div className="flex items-center gap-2 ml-4">
+          <span className={`text-xs ${wsStatus === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
+            WS: {wsStatus}
+          </span>
+        </div>
       </div>
 
       <div className="flex-grow overflow-auto">
@@ -227,7 +284,6 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
           />
         </div>
       </div>
-
 
       <UserPresenceList users={connectedUsers} />
     </div>
