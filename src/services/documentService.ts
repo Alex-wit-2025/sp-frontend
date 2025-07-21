@@ -8,8 +8,15 @@ import {
   deleteDoc, 
   query, 
   where, 
-  serverTimestamp 
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove 
 } from 'firebase/firestore';
+import { 
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail 
+} from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import { DocumentData } from '../types';
 
@@ -122,4 +129,52 @@ export async function addCollaborator(documentId: string, userId: string): Promi
       });
     }
   }
+}
+export async function removeCollaboratorFromDocument(documentId: string, userId: string): Promise<void> {
+  // Remove user from document collaborators
+  const docRef = doc(db, COLLECTION_NAME, documentId);
+  await updateDoc(docRef, {
+    collaborators: arrayRemove(userId)
+  });
+  
+  // Remove document from user's shared documents
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  
+  if (userSnap.exists()) {
+    await updateDoc(userRef, {
+      sharedDocuments: arrayRemove(documentId)
+    });
+  }
+}
+
+export async function getDocumentCollaborators(documentId: string): Promise<Array<{id: string, email: string, isOwner: boolean}>> {
+  const docRef = doc(db, COLLECTION_NAME, documentId);
+  const docSnap = await getDoc(docRef);
+  
+  if (!docSnap.exists()) {
+    throw new Error('Document not found');
+  }
+  
+  const data = docSnap.data();
+  const collaboratorIds = data.collaborators || [];
+  const ownerId = data.createdBy;
+  
+  const collaborators = [];
+  
+  for (const userId of collaboratorIds) {
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      collaborators.push({
+        id: userId,
+        email: userData.email,
+        isOwner: userId === ownerId
+      });
+    }
+  }
+  
+  return collaborators;
 }
