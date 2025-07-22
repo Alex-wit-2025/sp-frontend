@@ -170,7 +170,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
           ]
         : []),
     ],
-    content: lastSavedContent,
+    content: '', // Start empty
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg mx-auto focus:outline-none',
@@ -194,12 +194,20 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         debouncedSave(content);
       }, 10000);
     },
-  }, [lastSavedContent, debouncedSave, provider]);
+  }, [debouncedSave, provider]);
 
   // Update editor when content loads
+  const hasSetInitialContentRef = useRef(false);
+
   useEffect(() => {
-    if (editor && lastSavedContent && !isLoading) {
-      editor.commands.setContent(lastSavedContent);
+    if (
+      editor &&
+      lastSavedContent &&
+      !isLoading &&
+      !hasSetInitialContentRef.current
+    ) {
+      editor.commands.setContent(lastSavedContent, false, { overwrite: true });
+      hasSetInitialContentRef.current = true;
     }
   }, [editor, lastSavedContent, isLoading]);
 

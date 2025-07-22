@@ -24,7 +24,16 @@ export async function createDocument(userId: string, title: string = 'Untitled D
     createdBy: userId,
     collaborators: [userId]
   });
-  
+
+  // Add collaborator via API
+  try {
+    await fetch(`/api/documents/add-collaborator/${docRef.id}/${userId}`, {
+      method: 'POST'
+    });
+  } catch (e) {
+    console.error('Error adding collaborator via API:', e);
+  }
+
   return docRef.id;
 }
 
@@ -47,17 +56,32 @@ export async function getDocument(id: string, uid: string, token: string): Promi
   }
 }
 
-export async function getUserDocuments(userId: string): Promise<DocumentData[]> {
-  const q = query(
-    collection(db, COLLECTION_NAME), 
-    where('collaborators', 'array-contains', userId)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ 
-    id: doc.id, 
-    ...doc.data() 
-  })) as DocumentData[];
+export async function getUserDocuments(userId: string, token: string): Promise<DocumentData[]> {
+  try {
+    const res = await fetch(`/api/user/documents/${userId}`, {
+      headers: token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined,
+    });
+    if (!res.ok) return [];
+    console.log('Fetched user documents:', res);
+    const result = await res.json();
+    const ids = result.documents;
+    console.log('Document IDs:', ids);
+    if (!ids || !Array.isArray(ids) || ids.length === 0){
+      console.log('No documents found for user:', userId);
+      return [];
+    }
+    // Fetch each document by ID
+    const docs = await Promise.all(
+      ids.map((id: string) => getDocument(id, userId, token))
+    );
+    // Filter out nulls (failed fetches)
+    return docs.filter((doc): doc is DocumentData => doc !== null);
+  } catch (e) {
+    console.error('Error fetching user documents:', e);
+    return [];
+  }
 }
 
 export async function updateDocumentTitle(id: string, title: string): Promise<void> {

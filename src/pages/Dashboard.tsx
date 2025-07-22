@@ -26,7 +26,8 @@ const Dashboard: React.FC = () => {
       
       try {
         setLoading(true);
-        const docs = await getUserDocuments(user.uid);
+        const docs = await getUserDocuments(user.uid, await user.getIdToken());
+        console.log('Fetched documents:', docs);
         setDocuments(docs);
       } catch (err) {
         console.error('Error fetching documents:', err);
