@@ -30,3 +30,11 @@ export interface UserPresence {
     head: number;
   };
 }
+
+export interface UserData {
+  id: string;
+  email: string;
+  sharedDocuments?: string[];
+  createdAt: Timestamp;
+  isPlaceholder?: boolean;
+}
