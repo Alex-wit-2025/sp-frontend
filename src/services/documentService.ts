@@ -19,6 +19,7 @@ import {
 import { auth } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import { DocumentData } from '../types';
+import { Collaborator } from '../components/editor/ShareModal';
 
 const COLLECTION_NAME = 'documents';
 
@@ -140,66 +141,92 @@ export async function deleteDocument(id: string): Promise<void> {
   await deleteDoc(docRef);
 }
 
-export async function addCollaborator(documentId: string, userId: string): Promise<void> {
-  const docRef = doc(db, COLLECTION_NAME, documentId);
-  const docSnap = await getDoc(docRef);
-  
-  if (docSnap.exists()) {
-    const data = docSnap.data();
-    const collaborators = data.collaborators || [];
-    
-    if (!collaborators.includes(userId)) {
-      await updateDoc(docRef, {
-        collaborators: [...collaborators, userId]
-      });
-    }
-  }
-}
-export async function removeCollaboratorFromDocument(documentId: string, userId: string): Promise<void> {
-  // Remove user from document collaborators
-  const docRef = doc(db, COLLECTION_NAME, documentId);
-  await updateDoc(docRef, {
-    collaborators: arrayRemove(userId)
-  });
-  
-  // Remove document from user's shared documents
-  const userRef = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  
-  if (userSnap.exists()) {
-    await updateDoc(userRef, {
-      sharedDocuments: arrayRemove(documentId)
+export async function addCollaborator(documentId: string, myUid: string, email: string, token: string): Promise<void> {
+  try {
+    // 1. Get UID from email
+    const uidRes = await fetch(`/api/uid/${encodeURIComponent(email)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
+    if (!uidRes.ok) throw new Error('Failed to fetch UID for email');
+    const { uid } = await uidRes.json();
+
+    // 2. Add collaborator via API (docid and collaborator uid in URL)
+    const addRes = await fetch(`/api/documents/add-collaborator/${documentId}/${myUid}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: JSON.stringify({ collaborator: uid }),
+    });
+    if (!addRes.ok) throw new Error('Failed to add collaborator');
+  } catch (e) {
+    console.error('Error adding collaborator via API:', e);
+    throw e;
   }
 }
 
-export async function getDocumentCollaborators(documentId: string): Promise<Array<{id: string, email: string, isOwner: boolean}>> {
-  const docRef = doc(db, COLLECTION_NAME, documentId);
-  const docSnap = await getDoc(docRef);
-  
-  if (!docSnap.exists()) {
-    throw new Error('Document not found');
+export async function removeCollaboratorFromDocument(documentId: string, userId: string, token: string, collaboratorId: string): Promise<void> {
+  try {
+    const res = await fetch(`/api/documents/remove-collaborator/${documentId}/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ collaborator: collaboratorId }),
+    });
+    if (!res.ok) throw new Error('Failed to remove collaborator');
+  } catch (e) {
+    console.error('Error removing collaborator via API:', e);
+    throw e;
   }
-  
-  const data = docSnap.data();
-  const collaboratorIds = data.collaborators || [];
-  const ownerId = data.createdBy;
-  
-  const collaborators = [];
-  
-  for (const userId of collaboratorIds) {
-    const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-    
-    if (userSnap.exists()) {
-      const userData = userSnap.data();
-      collaborators.push({
-        id: userId,
-        email: userData.email,
-        isOwner: userId === ownerId
-      });
-    }
+}
+
+export async function getDocumentCollaborators(
+  documentId: string,
+  userId: string,
+  token: string
+): Promise<Collaborator[]> {
+  try {
+    // 1. Fetch document data to get collaborator UIDs and owners
+    const res = await fetch(`/api/documents/${documentId}/${userId}`, {
+      headers: token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined,
+    });
+    if (!res.ok) throw new Error('Failed to fetch document data');
+    const data = await res.json();
+    const collaboratorUids: string[] = data.collaborators?.map((c: any) => typeof c === 'string' ? c : c.id) || [];
+    const ownerUid: string = data.createdBy;
+
+    if (collaboratorUids.length === 0) return [];
+
+    // 2. Map UIDs to emails using /api/email/bulk
+    const emailRes = await fetch(`/api/emails/bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ uids: collaboratorUids }),
+    });
+    if (!emailRes.ok) throw new Error('Failed to fetch collaborator emails');
+    const emailJson = await emailRes.json();
+    const emailObjects: { uid: string; email: string }[] = emailJson.results; // <-- use .results
+
+    // Map to Collaborator[]
+    const collaborators: Collaborator[] = collaboratorUids.map(uid => {
+      const found = emailObjects.find(obj => obj.uid === uid);
+      const email = found ? found.email : 'unknown';
+      return {
+        id: uid,
+        email,
+        name: email,
+        isOwner: uid === ownerUid,
+      };
+    });
+
+    return collaborators;
+  } catch (e) {
+    console.error('Error fetching collaborators:', e);
+    throw e;
   }
-  
-  return collaborators;
 }

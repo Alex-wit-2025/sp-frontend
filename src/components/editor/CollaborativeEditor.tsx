@@ -87,13 +87,17 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     setProvider(wsProvider);
 
     // Log connection status
-    wsProvider.on('status', event => {
+    interface YjsStatusEvent {
+      status: string;
+    }
+
+    wsProvider.on('status', (event: YjsStatusEvent) => {
       setWsStatus(event.status);
       console.log('Yjs WS status:', event.status);
       console.log('Current user displayName:', user.displayName || 'Anonymous');
     });
 
-    wsProvider.on('sync', isSynced => {
+    wsProvider.on('sync', (isSynced: boolean) => {
       console.log('Yjs WS sync:', isSynced);
     });
 
@@ -206,7 +210,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       !isLoading &&
       !hasSetInitialContentRef.current
     ) {
-      editor.commands.setContent(lastSavedContent, false, { overwrite: true });
+      editor.commands.setContent(lastSavedContent, false);
       hasSetInitialContentRef.current = true;
     }
   }, [editor, lastSavedContent, isLoading]);

@@ -14,6 +14,7 @@ import {
   deleteDocument,
   createDocument
 } from '../services/documentService';
+import ShareModal from '../components/editor/ShareModal';
 
 const DocumentEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ const DocumentEditor: React.FC = () => {
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -43,7 +45,7 @@ const DocumentEditor: React.FC = () => {
         setDocument(doc);
         
         // Fetch user's documents for sidebar
-        const docs = await getUserDocuments(user.uid);
+        const docs = await getUserDocuments(user.uid, token);
         setDocuments(docs);
       } catch (err) {
         console.error('Error fetching document:', err);
@@ -132,7 +134,14 @@ const DocumentEditor: React.FC = () => {
           documentId={document.id} 
           title={document.title} 
         />
-        
+
+        {/* Share Button */}
+        <div className="p-4 flex justify-end">
+          <Button variant="secondary" onClick={() => setIsShareModalOpen(true)}>
+            Share
+          </Button>
+        </div>
+
         <div className="flex-1 overflow-auto">
           <CollaborativeEditor 
             documentId={document.id} 
@@ -140,6 +149,14 @@ const DocumentEditor: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        documentId={document.id}
+        documentTitle={document.title}
+      />
     </div>
   );
 };

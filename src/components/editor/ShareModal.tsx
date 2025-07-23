@@ -16,7 +16,7 @@ interface ShareModalProps {
   documentTitle: string;
 }
 
-interface Collaborator {
+export interface Collaborator {
   id: string;
   email: string;
   isOwner: boolean;
@@ -44,7 +44,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
   const fetchCollaborators = async () => {
     try {
-      const collaboratorList = await getDocumentCollaborators(documentId);
+      const collaboratorList: Collaborator[] = await getDocumentCollaborators(documentId, user?.uid || '', await user?.getIdToken() || '');
       setCollaborators(collaboratorList);
     } catch (err) {
       console.error('Error fetching collaborators:', err);
@@ -61,7 +61,13 @@ const ShareModal: React.FC<ShareModalProps> = ({
     setSuccess('');
 
     try {
-      await addCollaborator(documentId, email.trim());
+      if (!user) {
+        setError('You must be logged in to add collaborators.');
+        setLoading(false);
+        return;
+      }
+      const token = await user.getIdToken();
+      await addCollaborator(documentId, user.uid, email, token);
       setSuccess(`Successfully shared with ${email}`);
       setEmail('');
       await fetchCollaborators(); // Refresh the list
@@ -76,7 +82,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
     if (!confirm(`Remove ${collaboratorEmail} from this document?`)) return;
 
     try {
-      await removeCollaboratorFromDocument(documentId, collaboratorId);
+      await removeCollaboratorFromDocument(documentId, user?.uid || '', await user?.getIdToken() || '', collaboratorId);
       setSuccess(`Removed ${collaboratorEmail} from document`);
       await fetchCollaborators(); // Refresh the list
     } catch (err: any) {
@@ -88,7 +94,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-screen overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center space-x-2">
             <Users className="h-5 w-5 text-teal-600" />
