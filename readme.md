@@ -80,5 +80,3 @@ Skribbled is a modern, real-time collaborative document editor built with React,
 MIT
 
 ---
-
-Write better,
