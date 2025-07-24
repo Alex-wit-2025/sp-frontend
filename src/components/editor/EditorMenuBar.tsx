@@ -22,9 +22,10 @@ import { ChevronDown } from 'lucide-react';
 // ...existing code...
 interface EditorMenuBarProps {
   editor: Editor;
+  onShare?: () => void;
 }
 
-const EditorMenuBar: React.FC<EditorMenuBarProps> = ({ editor }) => {
+const EditorMenuBar: React.FC<EditorMenuBarProps> = ({ editor, onShare }) => {
   if (!editor) {
     return null;
   }
@@ -246,7 +247,7 @@ const activeHeadingLabel = activeHeading
             editor.chain().focus().insertContent({
                 type: 'mathBlock',
                 attrs: {},
-                content: [{ type: 'text', text: ' ' }], // Use a single space instead of an empty string
+                content: [{ type: 'text', text: ' ' }],
               }).run()
           }
         >
@@ -255,6 +256,15 @@ const activeHeadingLabel = activeHeading
         
         <div className="h-6 w-px bg-gray-300 mx-1"></div>
         
+        
+        <Button
+          variant="secondary"
+          size="sm"
+          className="justify-end ml-auto"
+          onClick={onShare}
+        >
+          Share
+        </Button>
         
       </div>
     </div>

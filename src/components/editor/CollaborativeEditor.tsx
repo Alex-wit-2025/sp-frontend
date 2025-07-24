@@ -11,7 +11,7 @@ import { EditorProps, UserPresence } from '../../types';
 import EditorMenuBar from './EditorMenuBar';
 import UserPresenceList from './UserPresenceList';
 import { Button } from '../ui/Button';
-import { updateDocumentContent, getDocument, getEmailForUid } from '../../services/documentService';
+import { updateDocumentContent, getDocument } from '../../services/documentService';
 import BulletList from '@tiptap/extension-bullet-list';
 import OrderedList from '@tiptap/extension-ordered-list';
 import ListItem from '@tiptap/extension-list-item';
@@ -23,27 +23,25 @@ import Underline from '@tiptap/extension-underline'
 import { TextAlign } from '@tiptap/extension-text-align'
 import 'katex/dist/katex.min.css';
 
+interface CollaborativeEditorProps extends EditorProps {
+  onShare?: () => void;
+}
 
 type SaveStatus = 'saved' | 'saving' | 'error' | 'pending';
 
-const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
+const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({ documentId, user, onShare }) => {
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
-  const [wsStatus, setWsStatus] = useState<string>('disconnected');
   const [connectedUsers, setConnectedUsers] = useState<UserPresence[]>([]);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [lastSavedContent, setLastSavedContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [initialContent, setInitialContent] = useState<string>('');
-  const [documentData, setDocumentData] = useState<any>(null);
+  const [documentData, setDocumentData] = useState<any>(null); // For debugging
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>(user.email || '');
-
+  
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastContentRef = useRef<string>('');
-
-  // --- Yjs Doc Ref ---
-  const ydocRef = useRef<Y.Doc | null>(null);
 
   // Load initial document content
   useEffect(() => {
@@ -52,9 +50,9 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         console.log('Loading document with ID:', documentId);
         const doc = await getDocument(documentId, user.uid, await user.getIdToken());
         console.log('Loaded document data:', doc);
-
-        setDocumentData(doc);
-
+        
+        setDocumentData(doc); // Store for debugging
+        
         if (doc && doc.content) {
           console.log('Document content found:', doc.content);
           setInitialContent(doc.content);
@@ -71,51 +69,10 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     loadDocument();
   }, [documentId]);
 
-  // --- Yjs Websocket Connection ---
-  useEffect(() => {
-    if (!ydocRef.current) {
-      ydocRef.current = new Y.Doc();
-    }
-    const ydoc = ydocRef.current;
-
-    // Only use import.meta.env for Vite
-    const wsServer =
-      import.meta.env.VITE_WS_SERVER?.trim() ||
-      'ws://localhost:1234';
-
-    // Connect to yjs-ws server
-    const wsProvider = new WebsocketProvider(
-      wsServer,
-      documentId,
-      ydoc
-    );
-
-    setProvider(wsProvider);
-
-    // Log connection status
-    interface YjsStatusEvent {
-      status: string;
-    }
-
-    wsProvider.on('status', (event: YjsStatusEvent) => {
-      setWsStatus(event.status);
-      console.log('Yjs WS status:', event.status);
-      console.log('Current user displayName:', user.displayName || user.email || 'Anonymous');
-    });
-
-    wsProvider.on('sync', (isSynced: boolean) => {
-      console.log('Yjs WS sync:', isSynced);
-    });
-
-    return () => {
-      wsProvider.destroy();
-    };
-  }, [documentId]);
-
   // Debounced save function
   const debouncedSave = useCallback(async (content: string) => {
     if (content === lastSavedContent) return;
-
+    
     try {
       setSaveStatus('saving');
       let resp = await updateDocumentContent(documentId, user.uid, content, await user.getIdToken());
@@ -144,22 +101,6 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     }
   }, [debouncedSave, lastSavedContent]);
 
-  // Fetch user email if not present
-  useEffect(() => {
-    let mounted = true;
-    // If user.email is not present, fetch it using UID
-    if (!user.email && user.uid) {
-      (async () => {
-        const token = user.getIdToken ? await user.getIdToken() : undefined;
-        const email = await getEmailForUid(user.uid, token);
-        if (mounted && email) setUserEmail(email);
-      })();
-    } else if (user.email) {
-      setUserEmail(user.email);
-    }
-    return () => { mounted = false; };
-  }, [user]);
-
   // Editor initialization
   const editor = useEditor({
     extensions: [
@@ -171,7 +112,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
       Strike,
       Underline,
       TextAlign.configure({
-        types: ['heading', 'paragraph'], // Add all node types you want to align
+      types: ['heading', 'paragraph'], // Add all node types you want to align
       }),
       Mathematics.configure({
         shouldRender: (state, pos, node) => {
@@ -180,62 +121,55 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         },
       }),
       Placeholder.configure({ placeholder: 'Start writing...' }),
-      // --- Add Collaboration extensions ---
-      ...(provider
-        ? [
-            Collaboration.configure({
-              document: ydocRef.current!,
-            }),
-            CollaborationCursor.configure({
-              provider: provider,
-              user: {
-                name: userEmail || 'Anonymous',
-                color: '#ffa500',
-              },
-            }),
-          ]
-        : []),
     ],
-    content: '', // Start empty
+    content: lastSavedContent,
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg mx-auto focus:outline-none',
       },
     },
 
+
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       lastContentRef.current = content;
-
+      
       if (content !== lastSavedContent) {
         setSaveStatus('pending');
       }
-
+      
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-
+      
       saveTimeoutRef.current = setTimeout(() => {
         console.log('Auto-saving content:', content);
         debouncedSave(content);
       }, 10000);
     },
-  }, [debouncedSave, provider, userEmail]);
+  }, [lastSavedContent, debouncedSave]);
 
+    // Manual save function
+      // const handleManualSave = useCallback(async () => {
+      //   if (editor) {
+      //     const content = editor.getHTML();
+      //     await debouncedSave(content);
+      //   }
+      // }, [debouncedSave, editor]);
   // Update editor when content loads
-  const hasSetInitialContentRef = useRef(false);
-
   useEffect(() => {
-    if (
-      editor &&
-      lastSavedContent &&
-      !isLoading &&
-      !hasSetInitialContentRef.current
-    ) {
-      editor.commands.setContent(lastSavedContent, false);
-      hasSetInitialContentRef.current = true;
-    }
-  }, [editor, lastSavedContent, isLoading]);
+  if (editor && lastSavedContent && !isLoading) {
+    editor.commands.setContent(lastSavedContent);
+  }
+  // Only depend on editor, documentId, and isLoading
+  }, [editor, documentId, isLoading]);
+
+
+  // Reset the flag when the documentId changes:
+  useEffect(() => {
+    setHasInitialized(false);
+  }, [documentId]);
+  
 
   // Save status indicator
   const SaveStatusIndicator = () => {
@@ -282,11 +216,11 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   if (!editor) {
     return <div className="flex justify-center p-12">Loading editor...</div>;
   }
-
+  
   return (
     <div className="h-full flex flex-col">
-      <EditorMenuBar editor={editor} />
-
+      <EditorMenuBar editor={editor} onShare={onShare} />
+      
       {/* Save status bar */}
       <div className="border-b border-gray-200 px-4 py-2 bg-gray-50 flex justify-between items-center">
         <SaveStatusIndicator />
@@ -302,23 +236,18 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
             </Button>
           )}
         </div>
-        {/* --- Show only WS status --- */}
-        <div className="flex items-center gap-2 ml-4">
-          <span className={`text-xs ${wsStatus === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
-            WS: {wsStatus}
-          </span>
-        </div>
       </div>
-
+      
       <div className="flex-grow overflow-auto">
         <div className="max-w-4xl mx-auto px-4">
           <EditorContent
             editor={editor}
             className="min-h-[calc(100vh-12rem)] border-b pb-24 prose"
-          />
+          />         
         </div>
       </div>
-
+      
+      
       <UserPresenceList users={connectedUsers} />
     </div>
   );

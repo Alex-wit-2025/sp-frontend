@@ -135,17 +135,13 @@ const DocumentEditor: React.FC = () => {
           title={document.title} 
         />
 
-        {/* Share Button */}
-        <div className="p-4 flex justify-end">
-          <Button variant="secondary" onClick={() => setIsShareModalOpen(true)}>
-            Share
-          </Button>
-        </div>
+        
 
         <div className="flex-1 overflow-auto">
           <CollaborativeEditor 
             documentId={document.id} 
-            user={user} 
+            user={user}
+            onShare={() => setIsShareModalOpen(true)} 
           />
         </div>
       </div>
