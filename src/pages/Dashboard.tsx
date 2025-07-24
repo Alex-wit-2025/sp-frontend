@@ -45,8 +45,8 @@ const Dashboard: React.FC = () => {
     if (!user) return;
     
     try {
-      const documentId = await createDocument(user.uid);
-      navigate(`/document/${documentId}`);
+      const docData = await createDocument(user.uid, await user.getIdToken());
+      navigate(`/document/${docData?.id}`);
     } catch (err) {
       console.error('Error creating document:', err);
       setError('Failed to create document. Please try again.');

@@ -23,26 +23,23 @@ import { Collaborator } from '../components/editor/ShareModal';
 
 const COLLECTION_NAME = 'documents';
 
-export async function createDocument(userId: string, title: string = 'Untitled Document'): Promise<string> {
-  const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-    title,
-    content: '',
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    createdBy: userId,
-    collaborators: [userId]
-  });
-
-  // Add collaborator via API
+export async function createDocument(userId: string, token: string, title: string = 'Untitled Document', content: string = ''): Promise<DocumentData | null> {
   try {
-    await fetch(`/api/documents/add-collaborator/${docRef.id}/${userId}`, {
-      method: 'POST'
+    const res = await fetch(`/api/documents/create/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ title, content }),
     });
+    if (!res.ok) throw new Error('Failed to create document');
+    const data = await res.json();
+    return data as DocumentData;
   } catch (e) {
-    console.error('Error adding collaborator via API:', e);
+    console.error('Error creating document via API:', e);
+    return null;
   }
-
-  return docRef.id;
 }
 
 export async function getDocument(id: string, uid: string, token: string): Promise<DocumentData | null> {
