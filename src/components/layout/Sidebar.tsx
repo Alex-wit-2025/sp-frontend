@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -33,6 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     try {
@@ -47,6 +48,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     doc.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Only show back button if not on dashboard
+  const showBackButton = location.pathname !== '/dashboard';
+
   if (isCollapsed) {
     return (
       <div className="h-screen w-16 bg-gray-900 p-2 flex flex-col items-center">
@@ -57,6 +61,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           <ChevronRight size={20} />
         </Button>
+        {showBackButton && (
+          <Button
+            variant="ghost"
+            className="text-gray-400 hover:text-white mb-4"
+            onClick={() => navigate('/dashboard')}
+            aria-label="Back to Dashboard"
+          >
+            <ChevronLeft size={20} />
+          </Button>
+        )}
         <Button
           variant="ghost"
           className="text-gray-400 hover:text-white mb-4"
@@ -102,10 +116,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </Button>
       </div>
       
-      <div className="mb-4">
+      <div className="flex flex-col items-center mt-4">
+        {showBackButton && (
+          <Button
+            variant="ghost"
+            className="mb-2 text-white hover:text-gray-300 bg-transparent"
+            onClick={() => navigate('/dashboard')}
+            aria-label="Back to Dashboard"
+          >
+            {isCollapsed ? (
+              <ChevronLeft size={20} />
+            ) : (
+              <>
+                <ChevronLeft size={16} className="mr-2" />
+                Back to Dashboard
+              </>
+            )}
+          </Button>
+        )}
         <Button
           variant="primary"
-          className="w-full"
+          className="w-full mb-3" // <-- add margin-bottom for spacing
           leftIcon={<Plus size={16} />}
           onClick={onNewDocument}
         >

@@ -17,6 +17,6 @@ WORKDIR /app
 
 COPY --from=builder /app /app
 
-EXPOSE 4173
+EXPOSE 8080
 
-CMD ["npx", "vite", "preview", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["npm" , "run", "start"]
