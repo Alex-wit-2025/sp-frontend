@@ -78,10 +78,9 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     }
     const ydoc = ydocRef.current;
 
-    // Check for WS_SERVER in .env, fallback to localhost
+    // Only use import.meta.env for Vite
     const wsServer =
       import.meta.env.VITE_WS_SERVER?.trim() ||
-      process.env.VITE_WS_SERVER?.trim() ||
       'ws://localhost:1234';
 
     // Connect to yjs-ws server
