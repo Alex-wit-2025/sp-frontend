@@ -230,3 +230,16 @@ export async function getDocumentCollaborators(
     throw e;
   }
 }
+export async function getEmailForUid(uid: string, token?: string): Promise<string> {
+  try {
+    const res = await fetch(`/api/email/${uid}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!res.ok) throw new Error('Failed to fetch email for UID');
+    const data = await res.json();
+    return data.email ?? 'unknown';
+  } catch (e) {
+    console.error('Error fetching email for UID:', e);
+    return 'unknown';
+  }
+}

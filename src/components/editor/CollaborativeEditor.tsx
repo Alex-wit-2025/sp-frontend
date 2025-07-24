@@ -11,7 +11,7 @@ import { EditorProps, UserPresence } from '../../types';
 import EditorMenuBar from './EditorMenuBar';
 import UserPresenceList from './UserPresenceList';
 import { Button } from '../ui/Button';
-import { updateDocumentContent, getDocument } from '../../services/documentService';
+import { updateDocumentContent, getDocument, getEmailForUid } from '../../services/documentService';
 import BulletList from '@tiptap/extension-bullet-list';
 import OrderedList from '@tiptap/extension-ordered-list';
 import ListItem from '@tiptap/extension-list-item';
@@ -36,6 +36,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   const [initialContent, setInitialContent] = useState<string>('');
   const [documentData, setDocumentData] = useState<any>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>(user.email || '');
 
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -77,9 +78,15 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     }
     const ydoc = ydocRef.current;
 
+    // Check for WS_SERVER in .env, fallback to localhost
+    const wsServer =
+      import.meta.env.VITE_WS_SERVER?.trim() ||
+      process.env.VITE_WS_SERVER?.trim() ||
+      'ws://localhost:1234';
+
     // Connect to yjs-ws server
     const wsProvider = new WebsocketProvider(
-      'ws://localhost:1234',
+      wsServer,
       documentId,
       ydoc
     );
@@ -94,7 +101,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     wsProvider.on('status', (event: YjsStatusEvent) => {
       setWsStatus(event.status);
       console.log('Yjs WS status:', event.status);
-      console.log('Current user displayName:', user.displayName || 'Anonymous');
+      console.log('Current user displayName:', user.displayName || user.email || 'Anonymous');
     });
 
     wsProvider.on('sync', (isSynced: boolean) => {
@@ -138,6 +145,22 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
     }
   }, [debouncedSave, lastSavedContent]);
 
+  // Fetch user email if not present
+  useEffect(() => {
+    let mounted = true;
+    // If user.email is not present, fetch it using UID
+    if (!user.email && user.uid) {
+      (async () => {
+        const token = user.getIdToken ? await user.getIdToken() : undefined;
+        const email = await getEmailForUid(user.uid, token);
+        if (mounted && email) setUserEmail(email);
+      })();
+    } else if (user.email) {
+      setUserEmail(user.email);
+    }
+    return () => { mounted = false; };
+  }, [user]);
+
   // Editor initialization
   const editor = useEditor({
     extensions: [
@@ -167,7 +190,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
             CollaborationCursor.configure({
               provider: provider,
               user: {
-                name: user.displayName || 'Anonymous',
+                name: userEmail || 'Anonymous',
                 color: '#ffa500',
               },
             }),
@@ -198,7 +221,7 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         debouncedSave(content);
       }, 10000);
     },
-  }, [debouncedSave, provider]);
+  }, [debouncedSave, provider, userEmail]);
 
   // Update editor when content loads
   const hasSetInitialContentRef = useRef(false);
