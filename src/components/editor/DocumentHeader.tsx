@@ -13,22 +13,22 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({ documentId, title, user
   const [isEditing, setIsEditing] = useState(false);
   const [documentTitle, setDocumentTitle] = useState(title || 'Untitled Document');
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   useEffect(() => {
     setDocumentTitle(title || 'Untitled Document');
   }, [title]);
-  
+
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
   }, [isEditing]);
-  
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDocumentTitle(e.target.value);
   };
-  
+
   const handleTitleSave = async () => {
     if (documentTitle.trim() === '') {
       setDocumentTitle('Untitled Document');
@@ -41,7 +41,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({ documentId, title, user
     }
     setIsEditing(false);
   };
-  
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleTitleSave();
@@ -50,7 +50,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({ documentId, title, user
       setIsEditing(false);
     }
   };
-  
+
   return (
     <div className="py-3 px-4 border-b">
       {isEditing ? (
@@ -63,12 +63,14 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({ documentId, title, user
           className="font-medium text-lg"
         />
       ) : (
-        <h1 
-          className="font-medium text-lg cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+        <button
+          type="button"
+          className="font-medium text-lg cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors text-left w-full"
           onClick={() => setIsEditing(true)}
+          aria-label="Edit document title"
         >
           {documentTitle}
-        </h1>
+        </button>
       )}
     </div>
   );

@@ -1,27 +1,5 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  getDoc, 
-  getDocs, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  serverTimestamp,
-  arrayUnion,
-  arrayRemove 
-} from 'firebase/firestore';
-import { 
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail 
-} from 'firebase/auth';
-import { auth } from '../lib/firebase';
-import { db } from '../lib/firebase';
 import { DocumentData } from '../types';
 import { Collaborator } from '../components/editor/ShareModal';
-
-const COLLECTION_NAME = 'documents';
 
 export async function createDocument(userId: string, token: string, title: string = 'Untitled Document', content: string = ''): Promise<DocumentData | null> {
   try {
@@ -73,7 +51,7 @@ export async function getUserDocuments(userId: string, token: string): Promise<D
     const result = await res.json();
     const ids = result.documents;
     console.log('Document IDs:', ids);
-    if (!ids || !Array.isArray(ids) || ids.length === 0){
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
       console.log('No documents found for user:', userId);
       return [];
     }
@@ -107,18 +85,14 @@ export async function updateDocumentTitle(id: string, uid: string, title: string
   }
 }
 
-// TODO: implement some way to manage who has the "talking stick"
-// the user that holds the "stick" will be the only user who submits saves to the backend
-// there will also need to be some kind of conflict resolution on the backend based off of who holds the "stick"
-// this might be doable with yjs but im just not sure
-export async function updateDocumentContent(id: string, uid: string, content: string, token: string): Promise<Boolean> {
+export async function updateDocumentContent(id: string, uid: string, content: string, token: string): Promise<boolean> {
   console.log("Updating document content", id, uid, content);
   console.log("Token:", token);
   const postReq = {
     content: content
   }
-  try{
-    const res = await fetch(`/api/documents/update/${id}/${uid}`,{
+  try {
+    const res = await fetch(`/api/documents/update/${id}/${uid}`, {
       headers: token
         ? { Authorization: `Bearer ${token}` }
         : undefined,
@@ -137,15 +111,26 @@ export async function updateDocumentContent(id: string, uid: string, content: st
     }
     return true
 
-  }catch(e){
-    console.log('Error posting data');
+  } catch (e) {
+    console.error('Error posting data:', e);
     return false;
   }
 }
 
-export async function deleteDocument(id: string): Promise<void> {
-  const docRef = doc(db, COLLECTION_NAME, id);
-  await deleteDoc(docRef);
+export async function deleteDocument(id: string, uid: string, token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/documents/delete/${id}/${uid}`, {
+      method: 'DELETE',
+      headers: token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined,
+    });
+    if (!res.ok) return false;
+    return true;
+  } catch (e) {
+    console.error('Error deleting document:', e);
+    return false;
+  }
 }
 
 export async function addCollaborator(documentId: string, myUid: string, email: string, token: string): Promise<void> {

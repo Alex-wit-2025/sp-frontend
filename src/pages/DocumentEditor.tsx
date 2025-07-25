@@ -25,15 +25,15 @@ const DocumentEditor: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   // Fetch document and document list
   useEffect(() => {
     const fetchData = async () => {
       if (!user || !id) return;
-      
+
       try {
         setLoading(true);
-        
+
         // Fetch current document
         const token = await user.getIdToken();
         const doc = await getDocument(id, user.uid, token);
@@ -43,7 +43,7 @@ const DocumentEditor: React.FC = () => {
         }
         console.log('Fetched document in document editor:', doc);
         setDocument(doc);
-        
+
         // Fetch user's documents for sidebar
         const docs = await getUserDocuments(user.uid, token);
         setDocuments(docs);
@@ -54,14 +54,14 @@ const DocumentEditor: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, [user, id]);
-  
+
   // Create a new document
   const handleNewDocument = async () => {
     if (!user) return;
-    
+
     try {
       const documentId = await createDocument(user.uid, await user.getIdToken());
       navigate(`/document/${documentId}`);
@@ -70,12 +70,13 @@ const DocumentEditor: React.FC = () => {
       setError('Failed to create document');
     }
   };
-  
+
   // Delete a document
   const handleDeleteDocument = async (docId: string) => {
     try {
-      await deleteDocument(docId);
-      
+      if (!user) return;
+      await deleteDocument(docId, user.uid, await user.getIdToken());
+
       if (docId === id) {
         // If we're deleting the current document, navigate back to dashboard
         navigate('/dashboard');
@@ -88,12 +89,12 @@ const DocumentEditor: React.FC = () => {
       setError('Failed to delete document');
     }
   };
-  
+
   // Navigate to a document
   const handleSelectDocument = (docId: string) => {
     navigate(`/document/${docId}`);
   };
-  
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -101,15 +102,15 @@ const DocumentEditor: React.FC = () => {
       </div>
     );
   }
-  
+
   if (error || !document || !user) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">
           {error || 'Document not found'}
         </h2>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           leftIcon={<ChevronLeft size={16} />}
           onClick={() => navigate('/dashboard')}
         >
@@ -118,7 +119,7 @@ const DocumentEditor: React.FC = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="flex h-screen">
       <Sidebar
@@ -128,18 +129,18 @@ const DocumentEditor: React.FC = () => {
         onDeleteDocument={handleDeleteDocument}
         activeDocumentId={id}
       />
-      
+
       <div className="flex-1 flex flex-col h-screen overflow-hidden bg-white">
-        <DocumentHeader 
-          documentId={document.id} 
-          title={document.title} 
+        <DocumentHeader
+          documentId={document.id}
+          title={document.title}
           user={user}
         />
 
         <div className="flex-1 overflow-auto">
-          <CollaborativeEditor 
-            documentId={document.id} 
-            user={user} 
+          <CollaborativeEditor
+            documentId={document.id}
+            user={user}
           />
         </div>
       </div>

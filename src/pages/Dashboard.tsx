@@ -18,12 +18,12 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   // Fetch user's documents
   useEffect(() => {
     const fetchDocuments = async () => {
       if (!user) return;
-      
+
       try {
         setLoading(true);
         const docs = await getUserDocuments(user.uid, await user.getIdToken());
@@ -36,14 +36,14 @@ const Dashboard: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
     fetchDocuments();
   }, [user]);
-  
+
   // Create a new document
   const handleNewDocument = async () => {
     if (!user) return;
-    
+
     try {
       const docData = await createDocument(user.uid, await user.getIdToken());
       navigate(`/document/${docData?.id}`);
@@ -52,23 +52,24 @@ const Dashboard: React.FC = () => {
       setError('Failed to create document. Please try again.');
     }
   };
-  
+
   // Delete a document
   const handleDeleteDocument = async (id: string) => {
+    if (!user) return;
     try {
-      await deleteDocument(id);
+      await deleteDocument(id, user.uid, await user.getIdToken());
       setDocuments(docs => docs.filter(doc => doc.id !== id));
     } catch (err) {
       console.error('Error deleting document:', err);
       setError('Failed to delete document. Please try again.');
     }
   };
-  
+
   // Navigate to a document
   const handleSelectDocument = (id: string) => {
     navigate(`/document/${id}`);
   };
-  
+
   return (
     <div className="flex h-screen">
       <Sidebar
@@ -77,7 +78,7 @@ const Dashboard: React.FC = () => {
         onSelectDocument={handleSelectDocument}
         onDeleteDocument={handleDeleteDocument}
       />
-      
+
       <div className="flex-1 p-8 bg-gray-50">
         {loading ? (
           <div className="flex justify-center items-center h-full">
@@ -90,7 +91,7 @@ const Dashboard: React.FC = () => {
                 {error}
               </div>
             )}
-            
+
             <div className="max-w-5xl mx-auto">
               <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-semibold text-gray-800">Your Documents</h1>
@@ -102,7 +103,7 @@ const Dashboard: React.FC = () => {
                   New Document
                 </Button>
               </div>
-              
+
               {documents.length === 0 ? (
                 <div className="text-center p-12 bg-white rounded-lg border border-gray-200">
                   <div className="inline-flex items-center justify-center p-3 bg-gray-100 rounded-full mb-4">
