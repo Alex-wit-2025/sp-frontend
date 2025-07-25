@@ -14,7 +14,6 @@ import { Button } from '../ui/Button';
 import { updateDocumentContent, getDocument, getEmailForUid } from '../../services/documentService';
 import BulletList from '@tiptap/extension-bullet-list';
 import OrderedList from '@tiptap/extension-ordered-list';
-import ListItem from '@tiptap/extension-list-item';
 import CodeBlock from '@tiptap/extension-code-block';
 import Blockquote from '@tiptap/extension-blockquote';
 import Mathematics from '@tiptap/extension-mathematics';
@@ -22,6 +21,7 @@ import Strike from '@tiptap/extension-strike'
 import Underline from '@tiptap/extension-underline'
 import { TextAlign } from '@tiptap/extension-text-align'
 import 'katex/dist/katex.min.css';
+import ShareModal from './ShareModal';
 
 
 type SaveStatus = 'saved' | 'saving' | 'error' | 'pending';
@@ -29,14 +29,11 @@ type SaveStatus = 'saved' | 'saving' | 'error' | 'pending';
 const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
   const [wsStatus, setWsStatus] = useState<string>('disconnected');
-  const [connectedUsers, setConnectedUsers] = useState<UserPresence[]>([]);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [lastSavedContent, setLastSavedContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
-  const [initialContent, setInitialContent] = useState<string>('');
-  const [documentData, setDocumentData] = useState<any>(null);
-  const [hasInitialized, setHasInitialized] = useState(false);
   const [userEmail, setUserEmail] = useState<string>(user.email || '');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -53,11 +50,9 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
         const doc = await getDocument(documentId, user.uid, await user.getIdToken());
         console.log('Loaded document data:', doc);
 
-        setDocumentData(doc);
 
-        if (doc && doc.content) {
-          console.log('Document content found:', doc.content);
-          setInitialContent(doc.content);
+        if (doc?.content) {
+          console.log('Document content found:', doc.content);;
           setLastSavedContent(doc.content);
           lastContentRef.current = doc.content;
         }
@@ -285,6 +280,25 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
 
   return (
     <div className="h-full flex flex-col">
+      {/* User Presence List (left) + Share Button (right) */}
+      <div className="border-b border-gray-100 px-4 py-2 bg-gray-50 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <UserPresenceList provider={provider} currentUser={user} />
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => setIsShareModalOpen(true)}
+        >
+          Share
+        </Button>
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          documentId={documentId}
+          documentTitle={editor?.getText() || ''}
+        />
+      </div>
+
       <EditorMenuBar editor={editor} />
 
       {/* Save status bar */}
@@ -302,13 +316,15 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
             </Button>
           )}
         </div>
-        {/* --- Show only WS status --- */}
         <div className="flex items-center gap-2 ml-4">
           <span className={`text-xs ${wsStatus === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
             WS: {wsStatus}
           </span>
         </div>
       </div>
+
+      {/* Add gap beneath the save status bar */}
+      <div className="h-4" />
 
       <div className="flex-grow overflow-auto">
         <div className="max-w-4xl mx-auto px-4">
@@ -318,8 +334,6 @@ const CollaborativeEditor: React.FC<EditorProps> = ({ documentId, user }) => {
           />
         </div>
       </div>
-
-      <UserPresenceList users={connectedUsers} />
     </div>
   );
 };

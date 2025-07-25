@@ -159,30 +159,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-grow overflow-y-auto">
         {filteredDocuments.length > 0 ? (
           filteredDocuments.map(doc => (
-            <div 
+            <button
               key={doc.id}
-              className={`flex items-center justify-between p-2 rounded-md cursor-pointer mb-1 ${
+              type="button"
+              className={`flex items-center justify-between p-2 rounded-md cursor-pointer mb-1 w-full text-left ${
                 activeDocumentId === doc.id 
                   ? 'bg-gray-800 text-white' 
                   : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
               onClick={() => onSelectDocument(doc.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectDocument(doc.id);
+                }
+              }}
+              tabIndex={0}
+              aria-pressed={activeDocumentId === doc.id}
             >
               <div className="flex items-center overflow-hidden">
                 <FileText size={16} className="mr-2 flex-shrink-0" />
                 <span className="truncate">{doc.title || 'Untitled Document'}</span>
               </div>
-              <Button
-                variant="ghost"
-                className="p-1 text-gray-400 hover:text-white hover:bg-red-500/20"
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="Delete document"
+                className="p-1 text-gray-400 hover:text-white hover:bg-red-500/20 rounded-md focus:outline-none"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeleteDocument(doc.id);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDeleteDocument(doc.id);
+                  }
+                }}
               >
                 <Trash2 size={14} />
-              </Button>
-            </div>
+              </span>
+            </button>
           ))
         ) : (
           <div className="text-gray-500 text-center mt-4">

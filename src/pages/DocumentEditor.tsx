@@ -63,7 +63,7 @@ const DocumentEditor: React.FC = () => {
     if (!user) return;
     
     try {
-      const documentId = await createDocument(user.uid);
+      const documentId = await createDocument(user.uid, await user.getIdToken());
       navigate(`/document/${documentId}`);
     } catch (err) {
       console.error('Error creating document:', err);
@@ -134,13 +134,6 @@ const DocumentEditor: React.FC = () => {
           documentId={document.id} 
           title={document.title} 
         />
-
-        {/* Share Button */}
-        <div className="p-4 flex justify-end">
-          <Button variant="secondary" onClick={() => setIsShareModalOpen(true)}>
-            Share
-          </Button>
-        </div>
 
         <div className="flex-1 overflow-auto">
           <CollaborativeEditor 
