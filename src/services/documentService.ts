@@ -89,12 +89,22 @@ export async function getUserDocuments(userId: string, token: string): Promise<D
   }
 }
 
-export async function updateDocumentTitle(id: string, title: string): Promise<void> {
-  const docRef = doc(db, COLLECTION_NAME, id);
-  await updateDoc(docRef, { 
-    title, 
-    updatedAt: serverTimestamp() 
-  });
+export async function updateDocumentTitle(id: string, uid: string, title: string, token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/documents/update-title/${id}/${uid}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ title }),
+    });
+    if (!res.ok) return false;
+    return true;
+  } catch (e) {
+    console.error('Error updating document title:', e);
+    return false;
+  }
 }
 
 // TODO: implement some way to manage who has the "talking stick"

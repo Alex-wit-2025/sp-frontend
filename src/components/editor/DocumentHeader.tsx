@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '../ui/Input';
 import { updateDocumentTitle } from '../../services/documentService';
+import { User } from 'firebase/auth';
 
 interface DocumentHeaderProps {
   documentId: string;
   title: string;
+  user: User;
 }
 
-const DocumentHeader: React.FC<DocumentHeaderProps> = ({ documentId, title }) => {
+const DocumentHeader: React.FC<DocumentHeaderProps> = ({ documentId, title, user }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [documentTitle, setDocumentTitle] = useState(title || 'Untitled Document');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -32,7 +34,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({ documentId, title }) =>
       setDocumentTitle('Untitled Document');
     } else {
       try {
-        await updateDocumentTitle(documentId, documentTitle);
+        await updateDocumentTitle(documentId, user.uid, documentTitle, await user.getIdToken());
       } catch (error) {
         console.error('Failed to update document title:', error);
       }

@@ -133,6 +133,7 @@ const DocumentEditor: React.FC = () => {
         <DocumentHeader 
           documentId={document.id} 
           title={document.title} 
+          user={user}
         />
 
         <div className="flex-1 overflow-auto">
